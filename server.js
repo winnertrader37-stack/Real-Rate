@@ -64,13 +64,18 @@ app.post("/api/rate", async (req, res) => {
       })
     });
     const data = await r.json();
-    if (!r.ok) return res.status(502).json({ error: "AI irraa deebiin hin argamne." });
+    if (!r.ok) {
+      console.error("Anthropic error:", JSON.stringify(data));
+      return res.status(502).json({ error: "AI irraa deebiin hin argamne: " + (data.error?.message || r.status) });
+    }
 
     const text = (data.content || []).map(b => b.text || "").join("").replace(/```json|```/g, "").trim();
-    res.json(JSON.parse(text));
+    const m = text.match(/\{[\s\S]*\}/);
+    if (!m) return res.status(502).json({ error: "AI deebii sirrii hin kennine." });
+    res.json(JSON.parse(m[0]));
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: "Rakkoon uumame. Irra deebi'i." });
+    res.status(500).json({ error: "Rakkoon uumame: " + e.message });
   }
 });
 
