@@ -51,7 +51,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
     <span id="dropTxt">📷 Suuraa filadhu yookaan kaameraan kaasi</span>
     <img id="prev" class="hide" alt="">
   </label>
-  <p class="note">Suuraan kee kuufamu hin qabu; madaallii qofaaf ergama.</p>
+  <p class="note">Suuraan kee kuufamu hin qabu; madaallii qofaaf ergama. · v2</p>
 </div>
 
 <div class="card">
@@ -72,6 +72,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
 
 <script>
 (function(){
+// Worker URL kee asitti galchi (Cloudflare irraa argatta)
+var API_URL="https://YOUR-WORKER.YOUR-NAME.workers.dev";
 var CATS=[
  {id:"face",l:"Fuula",ic:"🙂",d:"fuula waliigala, wal-madaaluu fi fakkeenya"},
  {id:"body",l:"Bifa qaamaa",ic:"🧍",d:"bifa fi madaalli qaamaa (kabaja waliin, mudaa hin dubbatin)"},
@@ -125,14 +127,15 @@ $("go").addEventListener("click",async function(){
   var btn=$("go");btn.disabled=true;btn.textContent="Madaalaa jira...";
   try{
     var b64=await new Promise(function(res,rej){var fr=new FileReader();fr.onload=function(){res(String(fr.result).split(",")[1])};fr.onerror=rej;fr.readAsDataURL(blob)});
-    var resp=await fetch("/api/rate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:b64,categories:ids,clothes:clothes})});
-    var r=await resp.json();
-    if(!resp.ok){showErr(r.error||"Rakkoon uumame. Irra deebi'i.");return}
+    var resp=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:b64,categories:ids,clothes:clothes})});
+    var raw=await resp.text();var r;
+    try{r=JSON.parse(raw)}catch(_){showErr("Deebiin JSON miti (HTTP "+resp.status+"). URL: "+API_URL+" -> "+raw.slice(0,80));return}
+    if(!resp.ok){showErr(r.error||("HTTP "+resp.status));return}
     if(!r||r.error){showErr(r&&r.error?r.error:"Madaallii hin argamne. Irra deebi’i.");return}
     render(r,sel);
   }catch(e){
     var c=e&&e.code;
-    showErr(c==="not_granted"?"Eeyyamni hin kennamne.":c==="rate_limited"?"Yeroo muraasaan booda yaali.":"Rakkoon uumame. Irra deebi’i.");
+    showErr(e instanceof TypeError?"Worker URL sirrii hin taane ykn CORS rakkoo qaba. API_URL sirreessi.":c==="not_granted"?"Eeyyamni hin kennamne.":c==="rate_limited"?"Yeroo muraasaan booda yaali.":"Rakkoon uumame. ["+(e&&e.name)+": "+(e&&e.message)+"]");
   }finally{btn.textContent="Madaali";upd()}
 });
 
